@@ -5,6 +5,7 @@ import { PlanningsPage } from '../pages/PlanningsPage';
 import { DiaryPage } from '../pages/DiaryPage';
 import { MatricesPage } from '../pages/MatricesPage';
 import { ReportsPage } from '../pages/ReportsPage';
+import TeacherDashboardPage from '../pages/TeacherDashboardPage';
 import { AppLayout } from '../components/layout/AppLayout';
 import { ProtectedRoute } from './ProtectedRoute';
 
@@ -44,6 +45,10 @@ export const router = createBrowserRouter([
       {
         path: 'reports',
         element: <ReportsPage />,
+      },
+      {
+        path: 'professor',
+        element: <TeacherDashboardPage />,
       },
     ],
   },
