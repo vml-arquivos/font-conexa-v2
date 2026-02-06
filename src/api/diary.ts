@@ -12,6 +12,7 @@ export interface CreateDiaryEventDto {
   title: string;
   date: string;
   description?: string;
+  [key: string]: any; // Permite campos adicionais
 }
 
 export async function getDiaryEvents(): Promise<DiaryEvent[]> {
@@ -19,7 +20,7 @@ export async function getDiaryEvents(): Promise<DiaryEvent[]> {
   return response.data;
 }
 
-export async function createDiaryEvent(data: CreateDiaryEventDto): Promise<DiaryEvent> {
+export async function createDiaryEvent(data: CreateDiaryEventDto | any): Promise<DiaryEvent> {
   const response = await http.post('/diary-events', data);
   return response.data;
 }
