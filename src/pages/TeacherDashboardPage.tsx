@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../app/AuthProvider';
 import { getPlannings, type Planning } from '../api/plannings';
 import { getCurriculumEntries, type CurriculumEntry } from '../api/curriculumEntries';
+import { getPedagogicalToday } from '../utils/pedagogicalDate';
 
 type DashboardState = 'loading' | 'blocked' | 'ready';
 
@@ -21,12 +22,25 @@ export default function TeacherDashboardPage() {
       setState('loading');
       setError(null);
 
-      // 1. Buscar planning EM_EXECUCAO
-      const plannings = await getPlannings({ status: 'EM_EXECUCAO' });
+      // 1. Buscar planning EM_EXECUCAO (escopado por turma)
+      // TODO: Implementar seleção de turma quando houver múltiplas
+      // Por enquanto, usar a primeira turma do professor
+      const classroomId = user?.user?.classrooms?.[0]?.id || null;
+      
+      if (!classroomId) {
+        setState('blocked');
+        setError('Nenhuma turma atribuída ao seu usuário. Entre em contato com a coordenação.');
+        return;
+      }
+
+      const plannings = await getPlannings({ 
+        status: 'EM_EXECUCAO',
+        classroomId: classroomId 
+      });
 
       if (!plannings || plannings.length === 0) {
         setState('blocked');
-        setError('Nenhum planejamento ativo encontrado. Entre em contato com a coordenação.');
+        setError('Nenhum planejamento ativo encontrado para sua turma. Entre em contato com a coordenação.');
         return;
       }
 
@@ -38,8 +52,8 @@ export default function TeacherDashboardPage() {
         console.warn(`Múltiplos planejamentos ativos encontrados (${plannings.length}). Usando o primeiro.`);
       }
 
-      // 2. Buscar CurriculumMatrixEntry do dia
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      // 2. Buscar CurriculumMatrixEntry do dia (usando timezone correto)
+      const today = getPedagogicalToday(); // YYYY-MM-DD in America/Sao_Paulo
       const entries = await getCurriculumEntries({
         matrixId: activePlanning.curriculumMatrixId,
         startDate: today,
@@ -60,27 +74,43 @@ export default function TeacherDashboardPage() {
     } catch (err: any) {
       console.error('Erro ao carregar dashboard:', err);
       setState('blocked');
-      setError(err.response?.data?.message || 'Erro ao carregar informações do dia. Tente novamente.');
+      
+      // Tratamento de erro melhorado
+      const errorMessage = err.response?.data?.message 
+        || err.message 
+        || 'Erro ao carregar informações do dia. Tente novamente.';
+      
+      setError(`❌ ${errorMessage}`);
+      
+      // Feedback visual adicional
+      alert(`Erro ao carregar dashboard: ${errorMessage}`);
     }
   }
 
   function handleRegisterDiary() {
+    // Validação rigorosa de payload
     if (!planning || !entry) {
-      alert('Dados insuficientes para registrar diário.');
+      alert('❌ Dados insuficientes para registrar diário.');
+      return;
+    }
+
+    if (!planning.id || !entry.id || !planning.classroomId) {
+      alert('❌ Dados incompletos. planningId, curriculumEntryId ou classroomId ausentes.');
       return;
     }
 
     // TODO: Implementar formulário de criação de diário
-    // Por enquanto, apenas preparar o DTO
+    // Por enquanto, apenas preparar o DTO limpo (sem undefined)
     const dtoStub = {
       planningId: planning.id,
       curriculumEntryId: entry.id,
       classroomId: planning.classroomId,
       // Outros campos serão preenchidos no formulário
+      // Garantir que nenhum campo undefined seja enviado
     };
 
-    console.log('DTO preparado:', dtoStub);
-    alert('Funcionalidade de registro de diário será implementada em breve.');
+    console.log('DTO preparado (limpo):', dtoStub);
+    alert('✅ Funcionalidade de registro de diário será implementada em breve.');
   }
 
   return (

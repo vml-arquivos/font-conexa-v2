@@ -8,6 +8,7 @@ import { ReportsPage } from '../pages/ReportsPage';
 import TeacherDashboardPage from '../pages/TeacherDashboardPage';
 import { AppLayout } from '../components/layout/AppLayout';
 import { ProtectedRoute } from './ProtectedRoute';
+import { RoleProtectedRoute } from './RoleProtectedRoute';
 
 export const router = createBrowserRouter([
   {
@@ -48,7 +49,11 @@ export const router = createBrowserRouter([
       },
       {
         path: 'professor',
-        element: <TeacherDashboardPage />,
+        element: (
+          <RoleProtectedRoute allowedRoles={['PROFESSOR']}>
+            <TeacherDashboardPage />
+          </RoleProtectedRoute>
+        ),
       },
     ],
   },
