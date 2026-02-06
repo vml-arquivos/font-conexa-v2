@@ -3,15 +3,32 @@ import { useAuth } from '../app/AuthProvider';
 import { getPlannings, type Planning } from '../api/plannings';
 import { getCurriculumEntries, type CurriculumEntry } from '../api/curriculumEntries';
 import { getPedagogicalToday } from '../utils/pedagogicalDate';
+import { OneTouchDiaryPanel } from '../components/dashboard/OneTouchDiaryPanel';
+import { QuickObservationInput } from '../components/dashboard/QuickObservationInput';
+import { ClassroomFeedMini } from '../components/dashboard/ClassroomFeedMini';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { useToast } from '../hooks/use-toast';
+import { BookOpen, Calendar, Users, AlertTriangle, CheckCircle } from 'lucide-react';
 
 type DashboardState = 'loading' | 'blocked' | 'ready';
 
 export default function TeacherDashboardPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [state, setState] = useState<DashboardState>('loading');
   const [planning, setPlanning] = useState<Planning | null>(null);
   const [entry, setEntry] = useState<CurriculumEntry | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [classroomId, setClassroomId] = useState<string | null>(null);
+
+  // Mock de alunos para o MVP (Em produção viria de uma API)
+  const studentsMock = [
+    { id: 'std-1', name: 'Ana Silva' },
+    { id: 'std-2', name: 'Bruno Oliveira' },
+    { id: 'std-3', name: 'Carla Santos' },
+    { id: 'std-4', name: 'Daniel Lima' },
+    { id: 'std-5', name: 'Eduarda Costa' },
+  ];
 
   useEffect(() => {
     loadDashboard();
@@ -22,12 +39,10 @@ export default function TeacherDashboardPage() {
       setState('loading');
       setError(null);
 
-      // 1. Buscar planning EM_EXECUCAO (escopado por turma)
-      // TODO: Implementar seleção de turma quando houver múltiplas
-      // Por enquanto, usar a primeira turma do professor
-      const classroomId = user?.user?.classrooms?.[0]?.id || null;
+      const currentClassroomId = user?.user?.classrooms?.[0]?.id || null;
+      setClassroomId(currentClassroomId);
       
-      if (!classroomId) {
+      if (!currentClassroomId) {
         setState('blocked');
         setError('Nenhuma turma atribuída ao seu usuário. Entre em contato com a coordenação.');
         return;
@@ -35,7 +50,7 @@ export default function TeacherDashboardPage() {
 
       const plannings = await getPlannings({ 
         status: 'EM_EXECUCAO',
-        classroomId: classroomId 
+        classroomId: currentClassroomId 
       });
 
       if (!plannings || plannings.length === 0) {
@@ -44,16 +59,10 @@ export default function TeacherDashboardPage() {
         return;
       }
 
-      // Se houver múltiplos, usar o primeiro e avisar
       const activePlanning = plannings[0];
       setPlanning(activePlanning);
 
-      if (plannings.length > 1) {
-        console.warn(`Múltiplos planejamentos ativos encontrados (${plannings.length}). Usando o primeiro.`);
-      }
-
-      // 2. Buscar CurriculumMatrixEntry do dia (usando timezone correto)
-      const today = getPedagogicalToday(); // YYYY-MM-DD in America/Sao_Paulo
+      const today = getPedagogicalToday();
       const entries = await getCurriculumEntries({
         matrixId: activePlanning.curriculumMatrixId,
         startDate: today,
@@ -66,144 +75,139 @@ export default function TeacherDashboardPage() {
         return;
       }
 
-      // Usar a primeira entry do dia
-      const todayEntry = entries[0];
-      setEntry(todayEntry);
-
+      setEntry(entries[0]);
       setState('ready');
     } catch (err: any) {
       console.error('Erro ao carregar dashboard:', err);
       setState('blocked');
-      
-      // Tratamento de erro melhorado
-      const errorMessage = err.response?.data?.message 
-        || err.message 
-        || 'Erro ao carregar informações do dia. Tente novamente.';
-      
+      const errorMessage = err.response?.data?.message || err.message || 'Erro ao carregar informações do dia.';
       setError(`❌ ${errorMessage}`);
-      
-      // Feedback visual adicional
-      alert(`Erro ao carregar dashboard: ${errorMessage}`);
+      toast({
+        variant: "destructive",
+        title: "Erro de Carregamento",
+        description: errorMessage,
+      });
     }
-  }
-
-  function handleRegisterDiary() {
-    // Validação rigorosa de payload
-    if (!planning || !entry) {
-      alert('❌ Dados insuficientes para registrar diário.');
-      return;
-    }
-
-    if (!planning.id || !entry.id || !planning.classroomId) {
-      alert('❌ Dados incompletos. planningId, curriculumEntryId ou classroomId ausentes.');
-      return;
-    }
-
-    // TODO: Implementar formulário de criação de diário
-    // Por enquanto, apenas preparar o DTO limpo (sem undefined)
-    const dtoStub = {
-      planningId: planning.id,
-      curriculumEntryId: entry.id,
-      classroomId: planning.classroomId,
-      // Outros campos serão preenchidos no formulário
-      // Garantir que nenhum campo undefined seja enviado
-    };
-
-    console.log('DTO preparado (limpo):', dtoStub);
-    alert('✅ Funcionalidade de registro de diário será implementada em breve.');
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Dashboard do Professor - Hoje</h1>
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard do Professor</h1>
+          <p className="text-muted-foreground">Gerencie as atividades da sua turma para hoje.</p>
+        </div>
+        <div className="flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full text-primary font-medium">
+          <Calendar className="h-4 w-4" />
+          {getPedagogicalToday()}
+        </div>
+      </header>
 
-      {/* Loading State */}
       {state === 'loading' && (
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-            <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-          </div>
-          <p className="text-gray-600 mt-4">Carregando informações do dia...</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="md:col-span-2 h-64 animate-pulse bg-gray-50" />
+          <Card className="h-64 animate-pulse bg-gray-50" />
         </div>
       )}
 
-      {/* Blocked State */}
       {state === 'blocked' && (
-        <div className="bg-yellow-50 border border-yellow-200 p-6 rounded-lg">
-          <h2 className="text-xl font-semibold text-yellow-800 mb-2">⚠️ Trava Pedagógica Ativa</h2>
-          <p className="text-yellow-700 mb-4">{error}</p>
-          <button
-            disabled
-            className="px-4 py-2 bg-gray-300 text-gray-500 rounded cursor-not-allowed"
-          >
-            Registrar Diário (Bloqueado)
-          </button>
-          <p className="text-sm text-gray-600 mt-4">
-            O registro de diário só é permitido quando há um planejamento ativo e uma entrada curricular programada para o dia.
-          </p>
-        </div>
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-yellow-800">
+              <AlertTriangle className="h-5 w-5" />
+              Trava Pedagógica Ativa
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-yellow-700">{error}</p>
+            <p className="text-sm text-yellow-600 mt-4">
+              O registro de diário só é permitido quando há um planejamento ativo e uma entrada curricular programada para o dia.
+            </p>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Ready State */}
-      {state === 'ready' && planning && entry && (
-        <div className="space-y-6">
-          {/* Planejamento Ativo */}
-          <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
-            <h2 className="text-lg font-semibold text-green-800 mb-2">✅ Planejamento Ativo</h2>
-            <p className="text-green-700">
-              <strong>{planning.title}</strong>
-              {planning.description && <span> - {planning.description}</span>}
-            </p>
+      {state === 'ready' && planning && entry && classroomId && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Coluna Principal */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Status e Objetivo */}
+            <Card className="border-green-100 bg-green-50/30">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg font-semibold flex items-center gap-2 text-green-800">
+                    <CheckCircle className="h-5 w-5" />
+                    Planejamento Ativo: {planning.title}
+                  </CardTitle>
+                  <span className="text-xs font-bold bg-green-200 text-green-800 px-2 py-1 rounded uppercase">Em Execução</span>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="bg-white p-4 rounded-lg border border-green-100 shadow-sm">
+                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                      <BookOpen className="h-4 w-4" /> Objetivo do Dia
+                    </h3>
+                    <p className="text-gray-900 font-medium leading-relaxed">{entry.objetivoBNCC}</p>
+                    <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="font-semibold text-gray-600">Intencionalidade:</span>
+                        <p className="text-gray-700 mt-1">{entry.intencionalidade}</p>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-gray-600">Atividade Sugerida:</span>
+                        <p className="text-gray-700 mt-1">{entry.exemploAtividade}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* One-Touch Panel */}
+            <OneTouchDiaryPanel 
+              planningId={planning.id}
+              curriculumEntryId={entry.id}
+              classroomId={classroomId}
+              students={studentsMock}
+            />
+
+            {/* Quick Observation */}
+            <QuickObservationInput 
+              planningId={planning.id}
+              curriculumEntryId={entry.id}
+              classroomId={classroomId}
+              students={studentsMock}
+            />
           </div>
 
-          {/* Entrada Curricular do Dia */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-2xl font-bold mb-4">📚 Objetivo do Dia</h2>
+          {/* Coluna Lateral */}
+          <div className="space-y-8">
+            {/* Info da Turma */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Users className="h-5 w-5 text-primary" />
+                  Sua Turma
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Total de Alunos:</span>
+                    <span className="font-bold">{studentsMock.length}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">ID da Turma:</span>
+                    <span className="font-mono text-[10px]">{classroomId}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold text-gray-700">Objetivo BNCC:</h3>
-                <p className="text-gray-900">{entry.objetivoBNCC}</p>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-gray-700">Objetivo Currículo:</h3>
-                <p className="text-gray-900">{entry.objetivoCurriculo}</p>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-gray-700">Intencionalidade:</h3>
-                <p className="text-gray-900">{entry.intencionalidade}</p>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-gray-700">Exemplo de Atividade:</h3>
-                <p className="text-gray-900">{entry.exemploAtividade}</p>
-              </div>
-            </div>
+            {/* Feed de Atividades */}
+            <ClassroomFeedMini classroomId={classroomId} />
           </div>
-
-          {/* Botão de Ação */}
-          <div className="flex justify-center">
-            <button
-              onClick={handleRegisterDiary}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
-            >
-              📝 Registrar Diário
-            </button>
-          </div>
-
-          {/* Informações de Debug (remover em produção) */}
-          <details className="bg-gray-50 p-4 rounded text-sm">
-            <summary className="cursor-pointer font-semibold text-gray-700">
-              🔍 Informações Técnicas (Debug)
-            </summary>
-            <pre className="mt-2 text-xs overflow-auto">
-              {JSON.stringify({ user: user?.user, planning, entry }, null, 2)}
-            </pre>
-          </details>
         </div>
       )}
     </div>
