@@ -1,73 +1,146 @@
-# React + TypeScript + Vite
+# Font-Conexa-V2
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend do sistema Conexa V2 desenvolvido com React, Vite e TypeScript.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Tecnologias
 
-## React Compiler
+- **React 19.2.4** - Framework UI
+- **Vite 7.3.1** - Build tool
+- **TypeScript 5.9.3** - Type safety
+- **React Router DOM 7.13.0** - Roteamento
+- **Axios 1.13.4** - HTTP client
+- **Tailwind CSS 3.4.19** - Styling
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## Desenvolvimento
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Instalação de Dependências
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm ci
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Executar em Desenvolvimento
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+Acesse: http://localhost:5173
+
+### Build de Produção
+
+```bash
+npm run build
+```
+
+### Preview do Build
+
+```bash
+npm run preview
+```
+
+---
+
+## Deploy no Coolify
+
+### Configuração
+
+**Build Command:**
+```bash
+npm ci && npm run build
+```
+
+**Output Directory:**
+```
+dist
+```
+
+**Variáveis de Ambiente:**
+```env
+VITE_API_BASE_URL=https://apiconexa.casadf.com.br
+```
+
+**Domínio:**
+```
+https://democonexa.casadf.com.br
+```
+
+Para mais detalhes, consulte [DEPLOY.md](./DEPLOY.md).
+
+---
+
+## Estrutura do Projeto
+
+```
+src/
+├── api/                    # Camada de API
+│   ├── http.ts            # Axios instance com interceptors
+│   ├── auth.ts            # Autenticação
+│   ├── plannings.ts       # Planejamentos
+│   ├── diary.ts           # Diário
+│   ├── matrices.ts        # Matrizes curriculares
+│   └── reports.ts         # Relatórios
+├── app/                    # Core da aplicação
+│   ├── AuthProvider.tsx   # Context de autenticação
+│   ├── ProtectedRoute.tsx # Guard de rotas
+│   └── router.tsx         # Configuração de rotas
+├── components/
+│   └── layout/            # Layout SaaS
+│       ├── AppLayout.tsx  # Layout principal
+│       ├── Sidebar.tsx    # Menu lateral
+│       └── Topbar.tsx     # Barra superior
+└── pages/                  # Páginas
+    ├── LoginPage.tsx      # Login
+    ├── DashboardPage.tsx  # Dashboard
+    ├── PlanningsPage.tsx  # Planejamentos
+    ├── DiaryPage.tsx      # Diário
+    ├── MatricesPage.tsx   # Matrizes
+    └── ReportsPage.tsx    # Relatórios
+```
+
+---
+
+## Rotas
+
+### Públicas
+- `/login` - Página de login
+
+### Protegidas (requer autenticação)
+- `/app/dashboard` - Dashboard
+- `/app/plannings` - Planejamentos
+- `/app/diary` - Diário
+- `/app/matrices` - Matrizes Curriculares
+- `/app/reports` - Relatórios
+
+---
+
+## API Endpoints
+
+### Autenticação
+- `POST /auth/login` - Login
+- `GET /example/protected` - Dados do usuário
+
+### Planejamentos
+- `GET /plannings` - Listar planejamentos
+
+### Diário
+- `GET /diary-events` - Listar eventos
+- `POST /diary-events` - Criar evento
+
+### Matrizes
+- `GET /curriculum-matrices` - Listar matrizes
+
+### Relatórios
+- `GET /reports/diary/by-classroom` - Relatório por turma
+- `GET /reports/diary/by-period` - Relatório por período
+- `GET /reports/diary/unplanned` - Relatório não planejado
+
+---
+
+## Licença
+
+Proprietary - Todos os direitos reservados

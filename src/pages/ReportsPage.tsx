@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { getAttendanceReport, getPerformanceReport, getActivityReport } from '../api/reports';
+import { getDiaryByClassroom, getDiaryByPeriod, getDiaryUnplanned } from '../api/reports';
 import type { ReportData } from '../api/reports';
 
-type ReportType = 'attendance' | 'performance' | 'activity';
+type ReportType = 'by-classroom' | 'by-period' | 'unplanned';
 
 export function ReportsPage() {
   const [reportType, setReportType] = useState<ReportType | null>(null);
@@ -19,14 +19,14 @@ export function ReportsPage() {
     try {
       let data: ReportData[] = [];
       switch (type) {
-        case 'attendance':
-          data = await getAttendanceReport();
+        case 'by-classroom':
+          data = await getDiaryByClassroom();
           break;
-        case 'performance':
-          data = await getPerformanceReport();
+        case 'by-period':
+          data = await getDiaryByPeriod();
           break;
-        case 'activity':
-          data = await getActivityReport();
+        case 'unplanned':
+          data = await getDiaryUnplanned();
           break;
       }
       setReportData(data || []);
@@ -38,9 +38,9 @@ export function ReportsPage() {
   };
 
   const reportTitles = {
-    attendance: 'Relatório de Frequência',
-    performance: 'Relatório de Desempenho',
-    activity: 'Relatório de Atividades',
+    'by-classroom': 'Relatório de Diário por Turma',
+    'by-period': 'Relatório de Diário por Período',
+    'unplanned': 'Relatório de Diário Não Planejado',
   };
 
   return (
@@ -49,22 +49,22 @@ export function ReportsPage() {
       
       <div className="mb-6 flex gap-4">
         <button
-          onClick={() => loadReport('attendance')}
+          onClick={() => loadReport('by-classroom')}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
         >
-          Frequência
+          Por Turma
         </button>
         <button
-          onClick={() => loadReport('performance')}
+          onClick={() => loadReport('by-period')}
           className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
         >
-          Desempenho
+          Por Período
         </button>
         <button
-          onClick={() => loadReport('activity')}
+          onClick={() => loadReport('unplanned')}
           className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
         >
-          Atividades
+          Não Planejado
         </button>
       </div>
 
