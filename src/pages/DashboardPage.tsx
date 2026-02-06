@@ -3,6 +3,23 @@ import { useAuth } from '../app/AuthProvider';
 export function DashboardPage() {
   const { user } = useAuth();
 
+  // Função para renderizar roles (pode ser array de strings ou objetos)
+  const renderRoles = () => {
+    if (!user?.roles || user.roles.length === 0) {
+      return null;
+    }
+
+    // Se roles é array de objetos com propriedade 'level' ou 'roleId'
+    if (typeof user.roles[0] === 'object') {
+      return user.roles
+        .map((role: any) => role.level || role.roleId || JSON.stringify(role))
+        .join(', ');
+    }
+
+    // Se roles é array de strings
+    return user.roles.join(', ');
+  };
+
   return (
     <div>
       <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
@@ -14,7 +31,7 @@ export function DashboardPage() {
           </p>
           {user?.roles && user.roles.length > 0 && (
             <p>
-              <span className="font-medium">Roles:</span> {user.roles.join(', ')}
+              <span className="font-medium">Roles:</span> {renderRoles()}
             </p>
           )}
           <div className="mt-4">
