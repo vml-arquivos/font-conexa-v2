@@ -7,14 +7,17 @@ import { OneTouchDiaryPanel } from '../components/dashboard/OneTouchDiaryPanel';
 import { QuickObservationInput } from '../components/dashboard/QuickObservationInput';
 import { ClassroomFeedMini } from '../components/dashboard/ClassroomFeedMini';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { useToast } from '../hooks/use-toast';
-import { BookOpen, Calendar, Users, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Badge } from '../components/ui/badge';
+import { PageShell } from '../components/ui/PageShell';
+import { LoadingState } from '../components/ui/LoadingState';
+import { ErrorState } from '../components/ui/ErrorState';
+import { toast } from 'sonner';
+import { BookOpen, Users, CheckCircle, Info } from 'lucide-react';
 
 type DashboardState = 'loading' | 'blocked' | 'ready';
 
 export default function TeacherDashboardPage() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [state, setState] = useState<DashboardState>('loading');
   const [planning, setPlanning] = useState<Planning | null>(null);
   const [entry, setEntry] = useState<CurriculumEntry | null>(null);
@@ -81,50 +84,47 @@ export default function TeacherDashboardPage() {
       console.error('Erro ao carregar dashboard:', err);
       setState('blocked');
       const errorMessage = err.response?.data?.message || err.message || 'Erro ao carregar informações do dia.';
-      setError(`❌ ${errorMessage}`);
-      toast({
-        variant: "destructive",
-        title: "Erro de Carregamento",
+      setError(errorMessage);
+      toast.error("Erro de Carregamento", {
         description: errorMessage,
       });
     }
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard do Professor</h1>
-          <p className="text-muted-foreground">Gerencie as atividades da sua turma para hoje.</p>
-        </div>
-        <div className="flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full text-primary font-medium">
-          <Calendar className="h-4 w-4" />
-          {getPedagogicalToday()}
-        </div>
-      </header>
-
-      {state === 'loading' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="md:col-span-2 h-64 animate-pulse bg-gray-50" />
-          <Card className="h-64 animate-pulse bg-gray-50" />
-        </div>
-      )}
+    <PageShell 
+      title="Dashboard do Professor" 
+      description="Gerencie as atividades da sua turma para hoje."
+      headerActions={
+        <Badge variant={state === 'ready' ? "success" : state === 'loading' ? "secondary" : "warning"} className="px-3 py-1">
+          {state === 'ready' ? "Pronto para Registro" : state === 'loading' ? "Carregando..." : "Bloqueado"}
+        </Badge>
+      }
+    >
+      {state === 'loading' && <LoadingState />}
 
       {state === 'blocked' && (
-        <Card className="border-yellow-200 bg-yellow-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-yellow-800">
-              <AlertTriangle className="h-5 w-5" />
-              Trava Pedagógica Ativa
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-yellow-700">{error}</p>
-            <p className="text-sm text-yellow-600 mt-4">
-              O registro de diário só é permitido quando há um planejamento ativo e uma entrada curricular programada para o dia.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          <ErrorState 
+            title="Trava Pedagógica Ativa" 
+            message={error || "O registro de diário está bloqueado no momento."}
+            onRetry={loadDashboard}
+          />
+          
+          <Card className="bg-muted/50 border-dashed">
+            <CardContent className="pt-6 flex gap-4 items-start">
+              <Info className="h-5 w-5 text-muted-foreground mt-0.5" />
+              <div className="text-sm text-muted-foreground space-y-1">
+                <p className="font-semibold text-foreground">Por que estou bloqueado?</p>
+                <p>O registro de diário só é permitido quando:</p>
+                <ul className="list-disc list-inside ml-2">
+                  <li>Existe um planejamento ativo (EM_EXECUCAO) para sua turma.</li>
+                  <li>Existe uma entrada curricular programada para a data de hoje.</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {state === 'ready' && planning && entry && classroomId && (
@@ -132,31 +132,31 @@ export default function TeacherDashboardPage() {
           {/* Coluna Principal */}
           <div className="lg:col-span-2 space-y-8">
             {/* Status e Objetivo */}
-            <Card className="border-green-100 bg-green-50/30">
+            <Card className="border-primary/10 bg-primary/5">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg font-semibold flex items-center gap-2 text-green-800">
-                    <CheckCircle className="h-5 w-5" />
+                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-primary" />
                     Planejamento Ativo: {planning.title}
                   </CardTitle>
-                  <span className="text-xs font-bold bg-green-200 text-green-800 px-2 py-1 rounded uppercase">Em Execução</span>
+                  <Badge variant="secondary" className="uppercase">Em Execução</Badge>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="bg-white p-4 rounded-lg border border-green-100 shadow-sm">
-                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                      <BookOpen className="h-4 w-4" /> Objetivo do Dia
+                  <div className="bg-background p-4 rounded-lg border shadow-sm">
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
+                      <BookOpen className="h-3.5 w-3.5" /> Objetivo do Dia
                     </h3>
-                    <p className="text-gray-900 font-medium leading-relaxed">{entry.objetivoBNCC}</p>
-                    <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <p className="text-foreground font-medium leading-relaxed">{entry.objetivoBNCC}</p>
+                    <div className="mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="font-semibold text-gray-600">Intencionalidade:</span>
-                        <p className="text-gray-700 mt-1">{entry.intencionalidade}</p>
+                        <span className="font-semibold text-muted-foreground">Intencionalidade:</span>
+                        <p className="text-foreground mt-1">{entry.intencionalidade}</p>
                       </div>
                       <div>
-                        <span className="font-semibold text-gray-600">Atividade Sugerida:</span>
-                        <p className="text-gray-700 mt-1">{entry.exemploAtividade}</p>
+                        <span className="font-semibold text-muted-foreground">Atividade Sugerida:</span>
+                        <p className="text-foreground mt-1">{entry.exemploAtividade}</p>
                       </div>
                     </div>
                   </div>
@@ -192,14 +192,16 @@ export default function TeacherDashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Total de Alunos:</span>
-                    <span className="font-bold">{studentsMock.length}</span>
+                    <Badge variant="outline">{studentsMock.length}</Badge>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">ID da Turma:</span>
-                    <span className="font-mono text-[10px]">{classroomId}</span>
+                  <div className="flex flex-col gap-1.5 pt-2 border-t">
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground">ID da Turma</span>
+                    <code className="text-[10px] bg-muted p-1.5 rounded block truncate font-mono">
+                      {classroomId}
+                    </code>
                   </div>
                 </div>
               </CardContent>
@@ -210,6 +212,6 @@ export default function TeacherDashboardPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }
