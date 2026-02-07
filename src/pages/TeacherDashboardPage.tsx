@@ -7,156 +7,143 @@ import { OneTouchDiaryPanel } from '../components/dashboard/OneTouchDiaryPanel';
 import { QuickObservationInput } from '../components/dashboard/QuickObservationInput';
 import { ClassroomFeedMini } from '../components/dashboard/ClassroomFeedMini';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { useToast } from '../hooks/use-toast';
-import { BookOpen, Calendar, Users, AlertTriangle, CheckCircle } from 'lucide-react';
+import { PageShell } from '../components/ui/PageShell';
+import { LoadingState } from '../components/ui/LoadingState';
+import { ErrorState } from '../components/ui/ErrorState';
+import { toast } from 'sonner';
+import { BookOpen, Users, CheckCircle, Info, Calendar } from 'lucide-react';
 
 type DashboardState = 'loading' | 'blocked' | 'ready';
 
+// Mock de alunos para o MVP (deve ser substituído por API real de alunos quando disponível)
+const studentsMock = [
+  { id: 'student-1', name: 'Ana Silva' },
+  { id: 'student-2', name: 'Bruno Oliveira' },
+  { id: 'student-3', name: 'Carla Santos' },
+  { id: 'student-4', name: 'Daniel Lima' },
+  { id: 'student-5', name: 'Eduarda Costa' },
+];
+
 export default function TeacherDashboardPage() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [state, setState] = useState<DashboardState>('loading');
   const [planning, setPlanning] = useState<Planning | null>(null);
   const [entry, setEntry] = useState<CurriculumEntry | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [classroomId, setClassroomId] = useState<string | null>(null);
 
-  // Mock de alunos para o MVP (Em produção viria de uma API)
-  const studentsMock = [
-    { id: 'std-1', name: 'Ana Silva' },
-    { id: 'std-2', name: 'Bruno Oliveira' },
-    { id: 'std-3', name: 'Carla Santos' },
-    { id: 'std-4', name: 'Daniel Lima' },
-    { id: 'std-5', name: 'Eduarda Costa' },
-  ];
+  const classroomId = user?.user?.classrooms?.[0]?.id;
+  const today = getPedagogicalToday();
 
   useEffect(() => {
-    loadDashboard();
-  }, []);
+    if (classroomId) {
+      loadDashboardData();
+    } else {
+      setState('blocked');
+      setError('Nenhuma turma atribuída ao seu perfil.');
+    }
+  }, [classroomId]);
 
-  async function loadDashboard() {
+  const loadDashboardData = async () => {
     try {
       setState('loading');
-      setError(null);
-
-      const currentClassroomId = user?.user?.classrooms?.[0]?.id || null;
-      setClassroomId(currentClassroomId);
       
-      if (!currentClassroomId) {
-        setState('blocked');
-        setError('Nenhuma turma atribuída ao seu usuário. Entre em contato com a coordenação.');
-        return;
-      }
-
+      // 1. Buscar planejamento ativo para a turma
       const plannings = await getPlannings({ 
-        status: 'EM_EXECUCAO',
-        classroomId: currentClassroomId 
+        status: 'EM_EXECUCAO', 
+        classroomId 
       });
-
-      if (!plannings || plannings.length === 0) {
+      
+      const activePlanning = plannings[0];
+      
+      if (!activePlanning) {
         setState('blocked');
-        setError('Nenhum planejamento ativo encontrado para sua turma. Entre em contato com a coordenação.');
+        setError('Não há planejamento ativo (EM_EXECUCAO) para sua turma hoje.');
         return;
       }
 
-      const activePlanning = plannings[0];
       setPlanning(activePlanning);
 
-      const today = getPedagogicalToday();
+      // 2. Buscar entrada curricular do dia (Sequência 2026)
       const entries = await getCurriculumEntries({
         matrixId: activePlanning.curriculumMatrixId,
         startDate: today,
-        endDate: today,
+        endDate: today
       });
 
-      if (!entries || entries.length === 0) {
+      const todayEntry = entries[0];
+
+      if (!todayEntry) {
         setState('blocked');
-        setError('Não há entrada curricular programada para hoje. Verifique o calendário letivo.');
+        setError(`Fora da sequência pedagógica: não existe entrada curricular para hoje (${today}).`);
         return;
       }
 
-      setEntry(entries[0]);
+      setEntry(todayEntry);
       setState('ready');
     } catch (err: any) {
       console.error('Erro ao carregar dashboard:', err);
+      setError(err.message || 'Falha ao carregar dados do dashboard.');
       setState('blocked');
-      const errorMessage = err.response?.data?.message || err.message || 'Erro ao carregar informações do dia.';
-      setError(`❌ ${errorMessage}`);
-      toast({
-        variant: "destructive",
-        title: "Erro de Carregamento",
-        description: errorMessage,
+      toast.error("Erro de Conexão", {
+        description: "Não foi possível carregar os dados pedagógicos."
       });
     }
-  }
+  };
+
+  if (state === 'loading') return <LoadingState />;
+  if (state === 'blocked') return (
+    <PageShell title="Dashboard do Professor" description="Gestão de sala de aula">
+      <ErrorState 
+        title="Acesso Bloqueado" 
+        message={error || "Trava pedagógica ativa."} 
+        onRetry={loadDashboardData}
+      />
+    </PageShell>
+  );
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard do Professor</h1>
-          <p className="text-muted-foreground">Gerencie as atividades da sua turma para hoje.</p>
-        </div>
-        <div className="flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full text-primary font-medium">
+    <PageShell 
+      title="Dashboard do Professor" 
+      description="Gerencie as atividades da sua turma para hoje."
+      headerActions={
+        <div className="flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full text-primary font-medium text-sm">
           <Calendar className="h-4 w-4" />
-          {getPedagogicalToday()}
+          {today}
         </div>
-      </header>
-
-      {state === 'loading' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="md:col-span-2 h-64 animate-pulse bg-gray-50" />
-          <Card className="h-64 animate-pulse bg-gray-50" />
-        </div>
-      )}
-
-      {state === 'blocked' && (
-        <Card className="border-yellow-200 bg-yellow-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-yellow-800">
-              <AlertTriangle className="h-5 w-5" />
-              Trava Pedagógica Ativa
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-yellow-700">{error}</p>
-            <p className="text-sm text-yellow-600 mt-4">
-              O registro de diário só é permitido quando há um planejamento ativo e uma entrada curricular programada para o dia.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {state === 'ready' && planning && entry && classroomId && (
+      }
+    >
+      {planning && entry && classroomId && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Coluna Principal */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Status e Objetivo */}
-            <Card className="border-green-100 bg-green-50/30">
+            {/* Status e Objetivo (Sequência 2026) */}
+            <Card className="border-primary/10 bg-primary/5 shadow-none">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg font-semibold flex items-center gap-2 text-green-800">
+                  <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary">
                     <CheckCircle className="h-5 w-5" />
-                    Planejamento Ativo: {planning.title}
+                    Planejamento: {planning.title}
                   </CardTitle>
-                  <span className="text-xs font-bold bg-green-200 text-green-800 px-2 py-1 rounded uppercase">Em Execução</span>
+                  <span className="text-[10px] font-black bg-primary text-primary-foreground px-2 py-1 rounded uppercase tracking-tighter">
+                    Sequência 2026
+                  </span>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="bg-white p-4 rounded-lg border border-green-100 shadow-sm">
-                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                      <BookOpen className="h-4 w-4" /> Objetivo do Dia
+                  <div className="bg-background p-4 rounded-xl border border-primary/10 shadow-sm">
+                    <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <BookOpen className="h-3 w-3" /> Objetivo BNCC do Dia
                     </h3>
-                    <p className="text-gray-900 font-medium leading-relaxed">{entry.objetivoBNCC}</p>
-                    <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <p className="text-sm font-bold leading-relaxed">{entry.objetivoBNCC}</p>
+                    <div className="mt-4 pt-4 border-t border-border grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
                       <div>
-                        <span className="font-semibold text-gray-600">Intencionalidade:</span>
-                        <p className="text-gray-700 mt-1">{entry.intencionalidade}</p>
+                        <span className="font-black uppercase tracking-tighter text-muted-foreground">Intencionalidade</span>
+                        <p className="text-foreground mt-1 font-medium">{entry.intencionalidade}</p>
                       </div>
                       <div>
-                        <span className="font-semibold text-gray-600">Atividade Sugerida:</span>
-                        <p className="text-gray-700 mt-1">{entry.exemploAtividade}</p>
+                        <span className="font-black uppercase tracking-tighter text-muted-foreground">Atividade Sugerida</span>
+                        <p className="text-foreground mt-1 font-medium">{entry.exemploAtividade}</p>
                       </div>
                     </div>
                   </div>
@@ -184,22 +171,22 @@ export default function TeacherDashboardPage() {
           {/* Coluna Lateral */}
           <div className="space-y-8">
             {/* Info da Turma */}
-            <Card>
+            <Card className="shadow-sm border-primary/5">
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary" />
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary" />
                   Sua Turma
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Total de Alunos:</span>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground font-medium">Total de Alunos:</span>
                     <span className="font-bold">{studentsMock.length}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">ID da Turma:</span>
-                    <span className="font-mono text-[10px]">{classroomId}</span>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground font-medium">ID da Turma:</span>
+                    <span className="font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded">{classroomId}</span>
                   </div>
                 </div>
               </CardContent>
@@ -210,6 +197,6 @@ export default function TeacherDashboardPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }
