@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../app/AuthProvider';
 import { getPlannings, type Planning } from '../api/plannings';
 import { getCurriculumEntries, type CurriculumEntry } from '../api/curriculumEntries';
@@ -31,12 +31,15 @@ export default function TeacherDashboardPage() {
     { id: 'std-5', name: 'Eduarda Costa' },
   ];
 
-  const loadDashboard = async () => {
+  const loadDashboard = useCallback(async () => {
     try {
       setState('loading');
       setError(null);
 
-      const currentClassroomId = user?.user?.classrooms?.[0]?.id || null;
+      const currentClassroomId = 
+        (user && typeof user === 'object' && 'user' in user && 
+         user.user && typeof user.user === 'object' && 'classrooms' in user.user &&
+         Array.isArray(user.user.classrooms) && user.user.classrooms[0]?.id) || null;
       setClassroomId(currentClassroomId);
       
       if (!currentClassroomId) {
@@ -85,9 +88,10 @@ export default function TeacherDashboardPage() {
         description: errorMessage,
       });
     }
-  };
+  }, [user, toast]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadDashboard();
   }, [loadDashboard]);
 

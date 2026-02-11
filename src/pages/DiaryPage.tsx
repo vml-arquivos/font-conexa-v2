@@ -269,7 +269,7 @@ export function DiaryPage() {
                     {event.title}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {event.date}
+                    {event.eventDate}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {event.description || '-'}

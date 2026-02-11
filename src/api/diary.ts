@@ -12,7 +12,7 @@ export interface DiaryEvent {
   curriculumEntryId: string;
   createdAt?: string;
   updatedAt?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface CreateDiaryEventDto {
@@ -35,8 +35,8 @@ export async function getDiaryEvents(): Promise<DiaryEvent[]> {
  * Remove campos undefined, null ou vazios do payload antes de enviar ao backend
  * Garante que apenas campos válidos sejam enviados na requisição
  */
-function cleanPayload<T extends Record<string, any>>(payload: T): Partial<T> {
-  const cleaned: Partial<T> = {};
+function cleanPayload<T extends Record<string, unknown>>(payload: T & Record<string, unknown>): Record<string, unknown> {
+  const cleaned: Record<string, unknown> = {};
   
   for (const key in payload) {
     const value = payload[key];
@@ -52,7 +52,7 @@ function cleanPayload<T extends Record<string, any>>(payload: T): Partial<T> {
 
 export async function createDiaryEvent(data: CreateDiaryEventDto): Promise<DiaryEvent> {
   // Limpar payload antes de enviar
-  const cleanedData = cleanPayload(data);
+  const cleanedData = cleanPayload(data as unknown as Record<string, unknown>);
   
   // Validar campos obrigatórios
   const requiredFields: (keyof CreateDiaryEventDto)[] = [

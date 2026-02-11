@@ -9,7 +9,7 @@ export interface User {
   id: string;
   email: string;
   roles?: string[];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface MeResponse {
@@ -21,9 +21,9 @@ export interface MeResponse {
  * Aceita: accessToken | access_token | token
  * Aceita: refreshToken | refresh_token (se existir)
  */
-function parseLoginResponse(data: any): LoginResponse {
-  const accessToken = data.accessToken || data.access_token || data.token;
-  const refreshToken = data.refreshToken || data.refresh_token;
+function parseLoginResponse(data: Record<string, unknown>): LoginResponse {
+  const accessToken = (data.accessToken || data.access_token || data.token) as string;
+  const refreshToken = (data.refreshToken || data.refresh_token) as string | undefined;
 
   if (!accessToken) {
     console.error('Login response inválido:', data);

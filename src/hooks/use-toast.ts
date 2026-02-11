@@ -11,20 +11,6 @@ type ToasterToast = ToastProps & {
   action?: ToastActionElement
 }
 
-type ActionTypes = {
-  ADD_TOAST: "ADD_TOAST";
-  UPDATE_TOAST: "UPDATE_TOAST";
-  DISMISS_TOAST: "DISMISS_TOAST";
-  REMOVE_TOAST: "REMOVE_TOAST";
-};
-
-const actionTypes: ActionTypes = {
-  ADD_TOAST: "ADD_TOAST",
-  UPDATE_TOAST: "UPDATE_TOAST",
-  DISMISS_TOAST: "DISMISS_TOAST",
-  REMOVE_TOAST: "REMOVE_TOAST",
-} as const
-
 let count = 0
 
 function genId() {
@@ -34,19 +20,19 @@ function genId() {
 
 type Action =
   | {
-      type: typeof actionTypes.ADD_TOAST
+      type: "ADD_TOAST"
       toast: ToasterToast
     }
   | {
-      type: typeof actionTypes.UPDATE_TOAST
+      type: "UPDATE_TOAST"
       toast: Partial<ToasterToast>
     }
   | {
-      type: typeof actionTypes.DISMISS_TOAST
+      type: "DISMISS_TOAST"
       toastId?: ToasterToast["id"]
     }
   | {
-      type: typeof actionTypes.REMOVE_TOAST
+      type: "REMOVE_TOAST"
       toastId?: ToasterToast["id"]
     }
 

@@ -13,15 +13,19 @@ interface RoleProtectedRouteProps {
  * - user.user.roles (fallback)
  * - Se objeto[]: mapear role.level (string)
  */
-function normalizeRoles(user: any | null): string[] {
-  if (!user) return [];
+function normalizeRoles(user: unknown): string[] {
+  if (!user || typeof user !== 'object') return [];
+
+  // Type guard para acessar propriedades
+  const userObj = user as Record<string, unknown>;
 
   // Tentar user.roles primeiro
-  let roles = user.roles;
+  let roles = userObj.roles;
 
   // Fallback: user.user.roles
-  if (!roles && user.user?.roles) {
-    roles = user.user.roles;
+  if (!roles && userObj.user && typeof userObj.user === 'object') {
+    const nestedUser = userObj.user as Record<string, unknown>;
+    roles = nestedUser.roles;
   }
 
   // Se não encontrou roles, retornar vazio
@@ -37,7 +41,7 @@ function normalizeRoles(user: any | null): string[] {
   // Se roles é array de objetos, mapear role.level
   if (typeof roles[0] === 'object' && roles[0] !== null) {
     return roles
-      .map((role: any) => role.level || role.roleId || null)
+      .map((role: { level?: string; roleId?: string }) => role.level || role.roleId || null)
       .filter((level: string | null) => level !== null) as string[];
   }
 
@@ -87,4 +91,5 @@ export function RoleProtectedRoute({ children, allowedRoles }: RoleProtectedRout
 }
 
 // Exportar normalizeRoles para uso em outros componentes
+// eslint-disable-next-line react-refresh/only-export-components
 export { normalizeRoles };

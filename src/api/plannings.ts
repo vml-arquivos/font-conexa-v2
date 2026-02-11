@@ -12,7 +12,7 @@ export interface Planning {
   endDate?: string;
   createdAt?: string;
   updatedAt?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface GetPlanningsParams {
