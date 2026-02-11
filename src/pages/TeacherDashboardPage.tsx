@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../app/AuthProvider';
 import { getPlannings, type Planning } from '../api/plannings';
 import { getCurriculumEntries, type CurriculumEntry } from '../api/curriculumEntries';
@@ -9,6 +9,7 @@ import { ClassroomFeedMini } from '../components/dashboard/ClassroomFeedMini';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { useToast } from '../hooks/use-toast';
 import { BookOpen, Calendar, Users, AlertTriangle, CheckCircle } from 'lucide-react';
+import { getErrorMessage } from '../utils/errorMessage';
 
 type DashboardState = 'loading' | 'blocked' | 'ready';
 
@@ -30,11 +31,7 @@ export default function TeacherDashboardPage() {
     { id: 'std-5', name: 'Eduarda Costa' },
   ];
 
-  useEffect(() => {
-    loadDashboard();
-  }, []);
-
-  async function loadDashboard() {
+  const loadDashboard = async () => {
     try {
       setState('loading');
       setError(null);
@@ -77,10 +74,10 @@ export default function TeacherDashboardPage() {
 
       setEntry(entries[0]);
       setState('ready');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erro ao carregar dashboard:', err);
       setState('blocked');
-      const errorMessage = err.response?.data?.message || err.message || 'Erro ao carregar informações do dia.';
+      const errorMessage = getErrorMessage(err, 'Erro ao carregar informações do dia.');
       setError(`❌ ${errorMessage}`);
       toast({
         variant: "destructive",
@@ -88,7 +85,11 @@ export default function TeacherDashboardPage() {
         description: errorMessage,
       });
     }
-  }
+  };
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">

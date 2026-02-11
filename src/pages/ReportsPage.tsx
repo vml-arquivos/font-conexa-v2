@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { getDiaryByClassroom, getDiaryByPeriod, getDiaryUnplanned } from '../api/reports';
 import type { ReportData } from '../api/reports';
+import { getErrorMessage } from '../utils/errorMessage';
 
 type ReportType = 'by-classroom' | 'by-period' | 'unplanned';
 
@@ -30,8 +31,8 @@ export function ReportsPage() {
           break;
       }
       setReportData(data || []);
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Erro ao carregar relatório');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao carregar relatório'));
     } finally {
       setLoading(false);
     }
