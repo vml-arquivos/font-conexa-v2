@@ -1,7 +1,7 @@
 import http from './http';
 
 export interface ReportData {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export async function getDiaryByClassroom(): Promise<ReportData[]> {

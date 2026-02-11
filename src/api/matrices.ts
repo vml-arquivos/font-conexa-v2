@@ -4,7 +4,7 @@ export interface CurriculumMatrix {
   id: string;
   name: string;
   description?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export async function getCurriculumMatrices(): Promise<CurriculumMatrix[]> {
