@@ -7,13 +7,51 @@ interface RoleProtectedRouteProps {
 }
 
 /**
+ * Normaliza roles do usuário para array de strings
+ * Suporta múltiplos formatos:
+ * - user.roles (string[] ou objeto[])
+ * - user.user.roles (fallback)
+ * - Se objeto[]: mapear role.level (string)
+ */
+function normalizeRoles(user: any | null): string[] {
+  if (!user) return [];
+
+  // Tentar user.roles primeiro
+  let roles = user.roles;
+
+  // Fallback: user.user.roles
+  if (!roles && user.user?.roles) {
+    roles = user.user.roles;
+  }
+
+  // Se não encontrou roles, retornar vazio
+  if (!roles || !Array.isArray(roles)) {
+    return [];
+  }
+
+  // Se roles é array de strings, retornar direto
+  if (typeof roles[0] === 'string') {
+    return roles as string[];
+  }
+
+  // Se roles é array de objetos, mapear role.level
+  if (typeof roles[0] === 'object' && roles[0] !== null) {
+    return roles
+      .map((role: any) => role.level || role.roleId || null)
+      .filter((level: string | null) => level !== null) as string[];
+  }
+
+  return [];
+}
+
+/**
  * RoleProtectedRoute - Protege rotas baseadas em roles do usuário
  * 
  * Verifica se o usuário autenticado possui pelo menos uma das roles permitidas.
  * Se não possuir, redireciona para o dashboard principal.
  * 
  * @param children - Componente filho a ser renderizado se autorizado
- * @param allowedRoles - Array de roles permitidas (ex: ['PROFESSOR', 'MANTENEDORA_ADMIN'])
+ * @param allowedRoles - Array de roles permitidas (ex: ['PROFESSOR', 'MANTENEDORA'])
  */
 export function RoleProtectedRoute({ children, allowedRoles }: RoleProtectedRouteProps) {
   const { user, loading } = useAuth();
@@ -30,14 +68,23 @@ export function RoleProtectedRoute({ children, allowedRoles }: RoleProtectedRout
     return <Navigate to="/login" replace />;
   }
 
+  // Normalizar roles do usuário
+  const userRoles = normalizeRoles(user);
+
   // Verificar se o usuário possui pelo menos uma das roles permitidas
-  const userRoles = user?.user?.roles || [];
   const hasAllowedRole = userRoles.some((role: string) => allowedRoles.includes(role));
 
   if (!hasAllowedRole) {
-    console.warn(`Acesso negado: usuário não possui role permitida. Roles do usuário: ${userRoles.join(', ')}, Roles permitidas: ${allowedRoles.join(', ')}`);
+    console.warn(
+      `Acesso negado: usuário não possui role permitida. ` +
+      `Roles do usuário: ${userRoles.join(', ')}, ` +
+      `Roles permitidas: ${allowedRoles.join(', ')}`
+    );
     return <Navigate to="/app/dashboard" replace />;
   }
 
   return <>{children}</>;
 }
+
+// Exportar normalizeRoles para uso em outros componentes
+export { normalizeRoles };

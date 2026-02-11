@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../app/AuthProvider';
+import { getErrorMessage } from '../utils/errorMessage';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -18,8 +19,8 @@ export function LoginPage() {
     try {
       await login(email, password);
       navigate('/app/dashboard');
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Erro ao fazer login');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao fazer login'));
     } finally {
       setLoading(false);
     }

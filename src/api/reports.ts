@@ -19,22 +19,54 @@ export async function getDiaryUnplanned(): Promise<ReportData[]> {
   return response.data;
 }
 
+// Sprint 6 Fix: Dashboards corretos de unidade e professor
 
-// Sprint 6: Dashboard Unificado - Radar de Gestão
-export interface DashboardData {
-  pedagogical: {
-    adherenceRate: number;
-    status: 'OK' | 'WARNING' | 'CRITICAL';
-    totalEvents: number;
-    eventsWithoutMatrix: number;
+/**
+ * Dashboard da Unidade - KPIs operacionais e pedagógicos
+ */
+export interface UnitDashboardData {
+  unitId: string;
+  period: {
+    from: string;
+    to: string;
   };
-  operational: {
-    criticalBottlenecks: number;
+  kpis: {
+    diaryCreatedTotal: number;
+    unplannedCount: number;
+    planningsDraftOrPending: number;
+    classroomsCount: number;
+    activeChildrenCount: number;
   };
 }
 
-export async function fetchUnifiedDashboard(unitId?: string): Promise<DashboardData> {
-  const params = unitId ? { unitId } : {};
-  const response = await http.get('/reports/dashboard/unified', { params });
+export async function getUnitDashboard(params: {
+  unitId?: string;
+  from?: string;
+  to?: string;
+}): Promise<UnitDashboardData> {
+  const response = await http.get('/reports/dashboard/unit', { params });
+  return response.data;
+}
+
+/**
+ * Dashboard do Professor - KPIs por turma no dia
+ */
+export interface TeacherDashboardData {
+  date: string;
+  classrooms: Array<{
+    classroomId: string;
+    classroomName: string;
+    totalDiaryEvents: number;
+    unplannedEvents: number;
+    microGesturesFilled: number;
+    activePlanningStatus: string | null;
+  }>;
+}
+
+export async function getTeacherDashboard(params: {
+  date?: string;
+  classroomId?: string;
+}): Promise<TeacherDashboardData> {
+  const response = await http.get('/reports/dashboard/teacher', { params });
   return response.data;
 }
