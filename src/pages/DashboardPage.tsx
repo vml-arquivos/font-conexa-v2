@@ -334,7 +334,7 @@ export function DashboardPage() {
       )}
 
       {/* Debug JSON (apenas para DEVELOPER) */}
-      {(isDeveloper || true) && (
+      {isDeveloper && (
         <div className="bg-gray-50 p-4 rounded-lg">
           <button
             onClick={() => setShowDebug(!showDebug)}
