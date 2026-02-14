@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../app/AuthProvider';
 import { normalizeRoles } from '../app/RoleProtectedRoute';
 import {
@@ -7,6 +7,10 @@ import {
   type UnitDashboardData,
   type TeacherDashboardData,
 } from '../api/reports';
+import { getPlanningTemplatesCocris } from '../api/lookup';
+import type { PlanningTemplateCocris } from '../types/lookup';
+import { UnitSelect } from '../components/select/UnitSelect';
+import { ClassroomSelect } from '../components/select/ClassroomSelect';
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -35,23 +39,49 @@ export function DashboardPage() {
   });
   const [classroomId, setClassroomId] = useState('');
 
+  // Templates
+  const [templates, setTemplates] = useState<PlanningTemplateCocris[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(true);
+  const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null);
+
   // Debug toggle
   const [showDebug, setShowDebug] = useState(false);
 
   // Verificar roles
+  const isUnitLevel = userRoles.some((role) =>
+    ['UNIDADE', 'STAFF_CENTRAL'].includes(role)
+  );
+  const isGlobalLevel = userRoles.some((role) =>
+    ['MANTENEDORA', 'DEVELOPER'].includes(role)
+  );
   const canViewUnitDashboard = userRoles.some((role) =>
     ['UNIDADE', 'STAFF_CENTRAL', 'MANTENEDORA', 'DEVELOPER'].includes(role)
   );
-
   const canViewTeacherDashboard = userRoles.some((role) =>
     ['PROFESSOR', 'UNIDADE', 'STAFF_CENTRAL', 'MANTENEDORA', 'DEVELOPER'].includes(role)
   );
-
   const isProfessor = userRoles.includes('PROFESSOR');
   const isDeveloper = userRoles.includes('DEVELOPER');
 
-  // Handlers
-  const handleLoadUnitDashboard = async () => {
+  // Carregar templates
+  useEffect(() => {
+    let cancelled = false;
+    setTemplatesLoading(true);
+    getPlanningTemplatesCocris()
+      .then((data) => {
+        if (!cancelled) setTemplates(data);
+      })
+      .catch(() => {
+        // Silenciar erro de templates (não é crítico)
+      })
+      .finally(() => {
+        if (!cancelled) setTemplatesLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Handler: Carregar Dashboard da Unidade
+  const handleLoadUnitDashboard = useCallback(async () => {
     try {
       setUnitLoading(true);
       setUnitError(null);
@@ -61,15 +91,16 @@ export function DashboardPage() {
         to: toDate,
       };
 
-      // Roles globais precisam de unitId
-      if (!['UNIDADE', 'STAFF_CENTRAL'].some((r) => userRoles.includes(r))) {
+      // Roles globais precisam de unitId selecionado
+      if (isGlobalLevel) {
         if (!unitId) {
-          setUnitError('unitId é obrigatório para sua role');
+          setUnitError('Selecione uma unidade para visualizar o painel.');
           setUnitLoading(false);
           return;
         }
         params.unitId = unitId;
       }
+      // Roles de unidade: unitId vem do token (backend resolve)
 
       const data = await getUnitDashboard(params);
       setUnitData(data);
@@ -79,9 +110,10 @@ export function DashboardPage() {
     } finally {
       setUnitLoading(false);
     }
-  };
+  }, [fromDate, toDate, unitId, isGlobalLevel]);
 
-  const handleLoadTeacherDashboard = async () => {
+  // Handler: Carregar Dashboard do Professor
+  const handleLoadTeacherDashboard = useCallback(async () => {
     try {
       setTeacherLoading(true);
       setTeacherError(null);
@@ -93,13 +125,12 @@ export function DashboardPage() {
       // Roles não-professor precisam de classroomId
       if (!isProfessor) {
         if (!classroomId) {
-          setTeacherError('classroomId é obrigatório para sua role');
+          setTeacherError('Selecione uma turma para visualizar os KPIs.');
           setTeacherLoading(false);
           return;
         }
         params.classroomId = classroomId;
       } else if (classroomId) {
-        // Professor pode filtrar por turma específica
         params.classroomId = classroomId;
       }
 
@@ -111,7 +142,7 @@ export function DashboardPage() {
     } finally {
       setTeacherLoading(false);
     }
-  };
+  }, [teacherDate, classroomId, isProfessor]);
 
   return (
     <div className="space-y-6">
@@ -123,30 +154,41 @@ export function DashboardPage() {
           <span className="font-medium">Email:</span> {user?.email}
         </p>
         <p className="text-sm text-gray-600">
-          <span className="font-medium">Roles:</span> {userRoles.join(', ')}
+          <span className="font-medium">Perfil:</span> {userRoles.join(', ')}
         </p>
       </div>
 
-      {/* Dashboard da Unidade */}
+      {/* ========== Dashboard da Unidade ========== */}
       {canViewUnitDashboard && (
         <div className="bg-white p-6 rounded-lg shadow">
           <h2 className="text-2xl font-semibold mb-4 text-blue-700">
-            📊 Painel da Unidade
+            Painel da Unidade
           </h2>
 
-          {/* Formulário */}
+          {/* Formulário com Selects */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-            {!['UNIDADE', 'STAFF_CENTRAL'].some((r) => userRoles.includes(r)) && (
+            {/* Select de Unidade: só aparece para roles globais */}
+            {isGlobalLevel && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Unit ID *
+                  Unidade *
                 </label>
-                <input
-                  type="text"
+                <UnitSelect
                   value={unitId}
-                  onChange={(e) => setUnitId(e.target.value)}
-                  placeholder="UUID da unidade"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  onChange={setUnitId}
+                />
+              </div>
+            )}
+            {/* Roles de unidade: mostrar unidade fixa */}
+            {isUnitLevel && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Unidade
+                </label>
+                <UnitSelect
+                  value={unitId}
+                  onChange={setUnitId}
+                  disabled
                 />
               </div>
             )}
@@ -158,7 +200,7 @@ export function DashboardPage() {
                 type="date"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
               />
             </div>
             <div>
@@ -169,23 +211,23 @@ export function DashboardPage() {
                 type="date"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
               />
             </div>
             <div className="flex items-end">
               <button
                 onClick={handleLoadUnitDashboard}
                 disabled={unitLoading}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 text-sm font-medium"
               >
-                {unitLoading ? 'Carregando...' : 'Carregar'}
+                {unitLoading ? 'Carregando...' : 'Carregar Painel'}
               </button>
             </div>
           </div>
 
           {/* Erro */}
           {unitError && (
-            <div className="bg-red-50 border border-red-300 text-red-800 p-3 rounded-md mb-4">
+            <div className="bg-red-50 border border-red-300 text-red-800 p-3 rounded-md mb-4 text-sm">
               {unitError}
             </div>
           )}
@@ -230,18 +272,70 @@ export function DashboardPage() {
               </div>
             </div>
           )}
+
+          {/* Empty state: sem dados ainda */}
+          {!unitData && !unitLoading && !unitError && (
+            <div className="text-center py-8 text-gray-400">
+              <p className="text-lg">Selecione o período e clique em &quot;Carregar Painel&quot;</p>
+              <p className="text-sm mt-1">Os KPIs da unidade serão exibidos aqui.</p>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Dashboard do Professor */}
+      {/* ========== Dashboard do Professor ========== */}
       {canViewTeacherDashboard && (
         <div className="bg-white p-6 rounded-lg shadow">
           <h2 className="text-2xl font-semibold mb-4 text-green-700">
-            👨‍🏫 Dashboard do Professor (KPIs do dia)
+            Dashboard do Professor (KPIs do dia)
           </h2>
 
-          {/* Formulário */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          {/* Formulário com Selects */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            {/* Select de Unidade: só para roles globais */}
+            {isGlobalLevel && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Unidade *
+                </label>
+                <UnitSelect
+                  value={unitId}
+                  onChange={(id) => {
+                    setUnitId(id);
+                    setClassroomId(''); // Reset turma ao mudar unidade
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Select de Turma */}
+            {!isProfessor && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Turma {!isProfessor && '*'}
+                </label>
+                <ClassroomSelect
+                  unitId={unitId || undefined}
+                  value={classroomId}
+                  onChange={setClassroomId}
+                />
+              </div>
+            )}
+
+            {/* Professor: select de turma (suas turmas) */}
+            {isProfessor && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Turma (opcional)
+                </label>
+                <ClassroomSelect
+                  value={classroomId}
+                  onChange={setClassroomId}
+                  autoSelectSingle
+                />
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Data
@@ -250,35 +344,23 @@ export function DashboardPage() {
                 type="date"
                 value={teacherDate}
                 onChange={(e) => setTeacherDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Classroom ID {!isProfessor && '*'}
-              </label>
-              <input
-                type="text"
-                value={classroomId}
-                onChange={(e) => setClassroomId(e.target.value)}
-                placeholder={isProfessor ? 'Opcional' : 'UUID da turma'}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
               />
             </div>
             <div className="flex items-end">
               <button
                 onClick={handleLoadTeacherDashboard}
                 disabled={teacherLoading}
-                className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400"
+                className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 text-sm font-medium"
               >
-                {teacherLoading ? 'Carregando...' : 'Carregar'}
+                {teacherLoading ? 'Carregando...' : 'Carregar KPIs'}
               </button>
             </div>
           </div>
 
           {/* Erro */}
           {teacherError && (
-            <div className="bg-red-50 border border-red-300 text-red-800 p-3 rounded-md mb-4">
+            <div className="bg-red-50 border border-red-300 text-red-800 p-3 rounded-md mb-4 text-sm">
               {teacherError}
             </div>
           )}
@@ -290,7 +372,10 @@ export function DashboardPage() {
                 Data: {teacherData.date}
               </p>
               {teacherData.classrooms.length === 0 && (
-                <p className="text-gray-500">Nenhuma turma encontrada.</p>
+                <div className="text-center py-6 text-gray-400">
+                  <p className="text-lg">Nenhuma turma com dados nesta data</p>
+                  <p className="text-sm mt-1">Verifique se há eventos registrados ou tente outra data.</p>
+                </div>
               )}
               <div className="space-y-4">
                 {teacherData.classrooms.map((classroom) => (
@@ -330,8 +415,84 @@ export function DashboardPage() {
               </div>
             </div>
           )}
+
+          {/* Empty state */}
+          {!teacherData && !teacherLoading && !teacherError && (
+            <div className="text-center py-8 text-gray-400">
+              <p className="text-lg">
+                {isProfessor
+                  ? 'Clique em "Carregar KPIs" para ver os dados do dia'
+                  : 'Selecione uma unidade e turma, depois clique em "Carregar KPIs"'}
+              </p>
+              <p className="text-sm mt-1">Os KPIs por turma serão exibidos aqui.</p>
+            </div>
+          )}
         </div>
       )}
+
+      {/* ========== Templates de Planejamento ========== */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h2 className="text-2xl font-semibold mb-4 text-indigo-700">
+          Templates de Planejamento
+        </h2>
+
+        {templatesLoading && (
+          <div className="text-center py-6 text-gray-400">
+            <p>Carregando templates...</p>
+          </div>
+        )}
+
+        {!templatesLoading && templates.length === 0 && (
+          <div className="text-center py-6 text-gray-400">
+            <p className="text-lg">Nenhum template disponível</p>
+            <p className="text-sm mt-1">Templates de planejamento serão exibidos aqui quando configurados.</p>
+          </div>
+        )}
+
+        {!templatesLoading && templates.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {templates.map((template) => (
+              <div
+                key={template.id}
+                className="border border-indigo-200 rounded-lg p-4 hover:border-indigo-400 transition-colors"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <h3 className="font-semibold text-indigo-800">{template.name}</h3>
+                  <span className="text-xs font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded uppercase">
+                    {template.type}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 mb-3">{template.description}</p>
+
+                <button
+                  onClick={() =>
+                    setExpandedTemplate(
+                      expandedTemplate === template.id ? null : template.id
+                    )
+                  }
+                  className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                >
+                  {expandedTemplate === template.id ? 'Fechar modelo' : 'Ver modelo'}
+                </button>
+
+                {/* Seções expandidas */}
+                {expandedTemplate === template.id && (
+                  <div className="mt-3 pt-3 border-t border-indigo-100 space-y-2">
+                    {template.sections.map((section, idx) => (
+                      <div key={idx} className="bg-indigo-50 p-2 rounded text-sm">
+                        <p className="font-medium text-indigo-700">{section.title}</p>
+                        <p className="text-gray-500 text-xs mt-1">
+                          Campos: {section.fields.join(', ')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Debug JSON (apenas para DEVELOPER) */}
       {isDeveloper && (
@@ -340,7 +501,7 @@ export function DashboardPage() {
             onClick={() => setShowDebug(!showDebug)}
             className="text-sm text-gray-700 font-medium hover:text-gray-900"
           >
-            {showDebug ? '▼' : '▶'} Show Debug JSON
+            {showDebug ? '\u25BC' : '\u25B6'} Show Debug JSON
           </button>
           {showDebug && (
             <div className="mt-2 space-y-2">
@@ -357,6 +518,14 @@ export function DashboardPage() {
                   <summary className="cursor-pointer font-medium">Teacher Dashboard Data</summary>
                   <pre className="mt-2 text-xs overflow-auto">
                     {JSON.stringify(teacherData, null, 2)}
+                  </pre>
+                </details>
+              )}
+              {templates.length > 0 && (
+                <details className="bg-white p-3 rounded border">
+                  <summary className="cursor-pointer font-medium">Templates Data</summary>
+                  <pre className="mt-2 text-xs overflow-auto">
+                    {JSON.stringify(templates, null, 2)}
                   </pre>
                 </details>
               )}
