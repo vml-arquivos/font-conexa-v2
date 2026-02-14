@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../app/AuthProvider';
+import { normalizeRoles } from '../app/RoleProtectedRoute';
 import { getPlannings, type Planning } from '../api/plannings';
 import { getCurriculumEntries, type CurriculumEntry } from '../api/curriculumEntries';
 import { getPedagogicalToday } from '../utils/pedagogicalDate';
@@ -7,20 +8,32 @@ import { OneTouchDiaryPanel } from '../components/dashboard/OneTouchDiaryPanel';
 import { QuickObservationInput } from '../components/dashboard/QuickObservationInput';
 import { ClassroomFeedMini } from '../components/dashboard/ClassroomFeedMini';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { UnitSelect } from '../components/select/UnitSelect';
+import { ClassroomSelect } from '../components/select/ClassroomSelect';
 import { useToast } from '../hooks/use-toast';
 import { BookOpen, Calendar, Users, AlertTriangle, CheckCircle } from 'lucide-react';
 import { getErrorMessage } from '../utils/errorMessage';
 
-type DashboardState = 'loading' | 'blocked' | 'ready';
+type DashboardState = 'idle' | 'loading' | 'select-required' | 'blocked' | 'ready';
 
 export default function TeacherDashboardPage() {
   const { user } = useAuth();
+  const userRoles = normalizeRoles(user);
   const { toast } = useToast();
-  const [state, setState] = useState<DashboardState>('loading');
+  const [state, setState] = useState<DashboardState>('idle');
   const [planning, setPlanning] = useState<Planning | null>(null);
   const [entry, setEntry] = useState<CurriculumEntry | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [classroomId, setClassroomId] = useState<string | null>(null);
+  const [classroomId, setClassroomId] = useState<string>('');
+
+  // Roles
+  const isProfessor = userRoles.includes('PROFESSOR');
+  const isGlobalLevel = userRoles.some((role) =>
+    ['MANTENEDORA', 'DEVELOPER'].includes(role)
+  );
+
+  // Estado para select de unidade (global)
+  const [unitId, setUnitId] = useState('');
 
   // Mock de alunos para o MVP (Em produção viria de uma API)
   const studentsMock = [
@@ -31,31 +44,32 @@ export default function TeacherDashboardPage() {
     { id: 'std-5', name: 'Eduarda Costa' },
   ];
 
-  const loadDashboard = useCallback(async () => {
+  const loadDashboard = async (targetId?: string) => {
+    const effectiveClassroomId = targetId || classroomId;
+
+    if (!effectiveClassroomId && !isProfessor) {
+      setState('select-required');
+      return;
+    }
+
     try {
       setState('loading');
       setError(null);
 
-      const currentClassroomId = 
-        (user && typeof user === 'object' && 'user' in user && 
-         user.user && typeof user.user === 'object' && 'classrooms' in user.user &&
-         Array.isArray(user.user.classrooms) && user.user.classrooms[0]?.id) || null;
-      setClassroomId(currentClassroomId);
-      
-      if (!currentClassroomId) {
-        setState('blocked');
-        setError('Nenhuma turma atribuída ao seu usuário. Entre em contato com a coordenação.');
+      if (!effectiveClassroomId && !isProfessor) {
+        setState('select-required');
+        setError('Selecione uma turma para visualizar o dashboard.');
         return;
       }
 
-      const plannings = await getPlannings({ 
+      const plannings = await getPlannings({
         status: 'EM_EXECUCAO',
-        classroomId: currentClassroomId 
+        ...(effectiveClassroomId && { classroomId: effectiveClassroomId }),
       });
 
       if (!plannings || plannings.length === 0) {
         setState('blocked');
-        setError('Nenhum planejamento ativo encontrado para sua turma. Entre em contato com a coordenação.');
+        setError('Nenhum planejamento ativo encontrado para esta turma. Entre em contato com a coordenação.');
         return;
       }
 
@@ -81,19 +95,14 @@ export default function TeacherDashboardPage() {
       console.error('Erro ao carregar dashboard:', err);
       setState('blocked');
       const errorMessage = getErrorMessage(err, 'Erro ao carregar informações do dia.');
-      setError(`❌ ${errorMessage}`);
+      setError(errorMessage);
       toast({
         variant: "destructive",
         title: "Erro de Carregamento",
         description: errorMessage,
       });
     }
-  }, [user, toast]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadDashboard();
-  }, [loadDashboard]);
+  };
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
@@ -108,11 +117,113 @@ export default function TeacherDashboardPage() {
         </div>
       </header>
 
+      {/* Seleção de Unidade e Turma (para roles globais) */}
+      {!isProfessor && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Selecionar Turma</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {isGlobalLevel && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Unidade
+                  </label>
+                  <UnitSelect
+                    value={unitId}
+                    onChange={(id) => {
+                      setUnitId(id);
+                      setClassroomId('');
+                    }}
+                  />
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Turma *
+                </label>
+                <ClassroomSelect
+                  unitId={unitId || undefined}
+                  value={classroomId}
+                  onChange={setClassroomId}
+                />
+              </div>
+              <div className="flex items-end">
+                <button
+                  onClick={() => loadDashboard()}
+                  disabled={!classroomId || state === 'loading'}
+                  className="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 disabled:bg-gray-400 text-sm font-medium"
+                >
+                  {state === 'loading' ? 'Carregando...' : 'Carregar Dashboard'}
+                </button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Professor: select de turma (se tem mais de 1 turma acessível) */}
+      {isProfessor && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Sua Turma</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Turma
+                </label>
+                <ClassroomSelect
+                  value={classroomId}
+                  onChange={(id) => {
+                    setClassroomId(id);
+                    // Auto-load when professor selects a classroom
+                    loadDashboard(id);
+                  }}
+                  autoSelectSingle
+                />
+              </div>
+              <div className="flex items-end">
+                <button
+                  onClick={() => loadDashboard()}
+                  disabled={!classroomId || state === 'loading'}
+                  className="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 disabled:bg-gray-400 text-sm font-medium"
+                >
+                  {state === 'loading' ? 'Carregando...' : 'Carregar Dashboard'}
+                </button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {state === 'loading' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="md:col-span-2 h-64 animate-pulse bg-gray-50" />
           <Card className="h-64 animate-pulse bg-gray-50" />
         </div>
+      )}
+
+      {(state === 'idle' || state === 'select-required') && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-blue-800">
+              <Users className="h-5 w-5" />
+              {isProfessor ? 'Aguardando Turma' : 'Selecione uma Turma'}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-blue-700">
+              {isProfessor
+                ? 'Sua turma será carregada automaticamente. Se tiver mais de uma, selecione acima.'
+                : isGlobalLevel
+                  ? 'Selecione uma unidade e uma turma acima para visualizar o dashboard pedagógico.'
+                  : 'Selecione uma turma acima para visualizar o dashboard pedagógico.'}
+            </p>
+          </CardContent>
+        </Card>
       )}
 
       {state === 'blocked' && (
@@ -170,7 +281,7 @@ export default function TeacherDashboardPage() {
             </Card>
 
             {/* One-Touch Panel */}
-            <OneTouchDiaryPanel 
+            <OneTouchDiaryPanel
               planningId={planning.id}
               curriculumEntryId={entry.id}
               classroomId={classroomId}
@@ -178,7 +289,7 @@ export default function TeacherDashboardPage() {
             />
 
             {/* Quick Observation */}
-            <QuickObservationInput 
+            <QuickObservationInput
               planningId={planning.id}
               curriculumEntryId={entry.id}
               classroomId={classroomId}
@@ -193,7 +304,7 @@ export default function TeacherDashboardPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Users className="h-5 w-5 text-primary" />
-                  Sua Turma
+                  Turma Selecionada
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -201,10 +312,6 @@ export default function TeacherDashboardPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Total de Alunos:</span>
                     <span className="font-bold">{studentsMock.length}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">ID da Turma:</span>
-                    <span className="font-mono text-[10px]">{classroomId}</span>
                   </div>
                 </div>
               </CardContent>
