@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getAccessibleUnits } from '../../api/lookup';
 import type { AccessibleUnit } from '../../types/lookup';
+import { useLocalStorage } from '../../hooks/useLocalStorage';
 
 interface UnitSelectProps {
   value: string;
@@ -24,6 +25,7 @@ export function UnitSelect({ value, onChange, disabled, className }: UnitSelectP
   const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [autoSelected, setAutoSelected] = useState(false);
+  const [lastSelectedUnit, setLastSelectedUnit] = useLocalStorage<string>('lastSelectedUnit', '');
 
   useEffect(() => {
     let cancelled = false;
@@ -53,6 +55,20 @@ export function UnitSelect({ value, onChange, disabled, className }: UnitSelectP
       onChange(fetchState.units[0].id);
     }
   }, [fetchState.units, value, onChange, autoSelected]);
+
+  // Restaurar última unidade selecionada se existir e for válida
+  useEffect(() => {
+    if (!value && lastSelectedUnit && fetchState.units.some(u => u.id === lastSelectedUnit)) {
+      onChange(lastSelectedUnit);
+    }
+  }, [fetchState.units, value, lastSelectedUnit, onChange]);
+
+  // Salvar unidade selecionada no localStorage
+  useEffect(() => {
+    if (value && value !== lastSelectedUnit) {
+      setLastSelectedUnit(value);
+    }
+  }, [value, lastSelectedUnit, setLastSelectedUnit]);
 
   const { units, loading, error } = fetchState;
 
