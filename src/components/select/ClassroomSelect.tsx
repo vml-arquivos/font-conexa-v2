@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getAccessibleClassrooms } from '../../api/lookup';
 import type { AccessibleClassroom } from '../../types/lookup';
+import { useLocalStorage } from '../../hooks/useLocalStorage';
 
 interface ClassroomSelectProps {
   unitId?: string;
@@ -33,6 +34,7 @@ export function ClassroomSelect({
   const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [autoSelected, setAutoSelected] = useState(false);
+  const [lastSelectedClassroom, setLastSelectedClassroom] = useLocalStorage<string>('lastSelectedClassroom', '');
 
   useEffect(() => {
     let cancelled = false;
@@ -64,6 +66,20 @@ export function ClassroomSelect({
       onChange(fetchState.classrooms[0].id);
     }
   }, [fetchState.classrooms, value, onChange, autoSelectSingle, autoSelected]);
+
+  // Restaurar última turma selecionada se existir e for válida
+  useEffect(() => {
+    if (!value && lastSelectedClassroom && fetchState.classrooms.some(c => c.id === lastSelectedClassroom)) {
+      onChange(lastSelectedClassroom);
+    }
+  }, [fetchState.classrooms, value, lastSelectedClassroom, onChange]);
+
+  // Salvar turma selecionada no localStorage
+  useEffect(() => {
+    if (value && value !== lastSelectedClassroom) {
+      setLastSelectedClassroom(value);
+    }
+  }, [value, lastSelectedClassroom, setLastSelectedClassroom]);
 
   const { classrooms, loading, error } = fetchState;
 
