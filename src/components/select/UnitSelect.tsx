@@ -103,7 +103,8 @@ export function UnitSelect({ value, onChange, disabled, className }: UnitSelectP
   if (units.length === 0) {
     return (
       <div className={`px-3 py-2 border border-yellow-300 rounded-md bg-yellow-50 text-yellow-700 text-sm ${className || ''}`}>
-        Nenhuma unidade disponível
+        <p className="font-medium">Nenhuma unidade encontrada para seu acesso.</p>
+        <p className="text-xs mt-1">Rode o seed/importação no backend ou contate o administrador.</p>
       </div>
     );
   }
