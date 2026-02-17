@@ -48,9 +48,8 @@ export function DashboardPage() {
   const [showDebug, setShowDebug] = useState(false);
 
   // Verificar roles
-  const isUnitLevel = userRoles.some((role) =>
-    role.startsWith('UNIDADE') || role.startsWith('STAFF_CENTRAL')
-  );
+  const isStaffCentral = userRoles.some((role) => role.startsWith('STAFF_CENTRAL'));
+  const isUnitLevel = userRoles.some((role) => role.startsWith('UNIDADE'));
   const isGlobalLevel = userRoles.some((role) =>
     ['MANTENEDORA', 'DEVELOPER'].includes(role)
   );
@@ -167,8 +166,8 @@ export function DashboardPage() {
 
           {/* Formulário com Selects */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-            {/* Select de Unidade: só aparece para roles globais */}
-            {isGlobalLevel && (
+            {/* Select de Unidade: STAFF_CENTRAL e GLOBAL podem selecionar */}
+            {(isGlobalLevel || isStaffCentral) && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Unidade *
@@ -179,8 +178,8 @@ export function DashboardPage() {
                 />
               </div>
             )}
-            {/* Roles de unidade: mostrar unidade fixa */}
-            {isUnitLevel && (
+            {/* Roles de unidade: mostrar unidade fixa (desabilitado) */}
+            {isUnitLevel && !isStaffCentral && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Unidade
