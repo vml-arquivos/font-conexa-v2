@@ -90,8 +90,8 @@ export function DashboardPage() {
         to: toDate,
       };
 
-      // Roles globais precisam de unitId selecionado
-      if (isGlobalLevel) {
+      // Roles globais e STAFF_CENTRAL precisam de unitId selecionado
+      if (isGlobalLevel || isStaffCentral) {
         if (!unitId) {
           setUnitError('Selecione uma unidade para visualizar o painel.');
           setUnitLoading(false);
@@ -99,7 +99,7 @@ export function DashboardPage() {
         }
         params.unitId = unitId;
       }
-      // Roles de unidade: unitId vem do token (backend resolve)
+      // Roles de unidade (UNIDADE_*): unitId vem do token (backend resolve)
 
       const data = await getUnitDashboard(params);
       setUnitData(data);
