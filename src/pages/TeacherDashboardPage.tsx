@@ -27,7 +27,7 @@ export default function TeacherDashboardPage() {
   const [classroomId, setClassroomId] = useState<string>('');
 
   // Roles
-  const isProfessor = userRoles.includes('PROFESSOR');
+  const isProfessor = userRoles.some((role) => role.startsWith('PROFESSOR'));
   const isGlobalLevel = userRoles.some((role) =>
     ['MANTENEDORA', 'DEVELOPER'].includes(role)
   );

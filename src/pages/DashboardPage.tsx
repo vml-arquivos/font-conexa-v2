@@ -49,18 +49,18 @@ export function DashboardPage() {
 
   // Verificar roles
   const isUnitLevel = userRoles.some((role) =>
-    ['UNIDADE', 'STAFF_CENTRAL'].includes(role)
+    role.startsWith('UNIDADE') || role.startsWith('STAFF_CENTRAL')
   );
   const isGlobalLevel = userRoles.some((role) =>
     ['MANTENEDORA', 'DEVELOPER'].includes(role)
   );
   const canViewUnitDashboard = userRoles.some((role) =>
-    ['UNIDADE', 'STAFF_CENTRAL', 'MANTENEDORA', 'DEVELOPER'].includes(role)
+    role.startsWith('UNIDADE') || role.startsWith('STAFF_CENTRAL') || ['MANTENEDORA', 'DEVELOPER'].includes(role)
   );
   const canViewTeacherDashboard = userRoles.some((role) =>
-    ['PROFESSOR', 'UNIDADE', 'STAFF_CENTRAL', 'MANTENEDORA', 'DEVELOPER'].includes(role)
+    role.startsWith('PROFESSOR') || role.startsWith('UNIDADE') || role.startsWith('STAFF_CENTRAL') || ['MANTENEDORA', 'DEVELOPER'].includes(role)
   );
-  const isProfessor = userRoles.includes('PROFESSOR');
+  const isProfessor = userRoles.some((role) => role.startsWith('PROFESSOR'));
   const isDeveloper = userRoles.includes('DEVELOPER');
 
   // Carregar templates
