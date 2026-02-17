@@ -33,10 +33,12 @@ export function UnitSelect({ value, onChange, disabled, className }: UnitSelectP
     getAccessibleUnits()
       .then((data) => {
         if (cancelled) return;
+        console.log('[UnitSelect] Unidades carregadas:', data.length, data);
         setFetchState({ units: data, loading: false, error: null });
       })
       .catch((err) => {
         if (cancelled) return;
+        console.error('[UnitSelect] Erro ao carregar unidades:', err);
         setFetchState({
           units: [],
           loading: false,
@@ -50,7 +52,7 @@ export function UnitSelect({ value, onChange, disabled, className }: UnitSelectP
   // Auto-selecionar se apenas 1 unidade (via efeito separado)
   useEffect(() => {
     if (!autoSelected && fetchState.units.length === 1 && !value) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+      console.log('[UnitSelect] Auto-selecionando única unidade:', fetchState.units[0]);
       setAutoSelected(true);
       onChange(fetchState.units[0].id);
     }
@@ -59,6 +61,7 @@ export function UnitSelect({ value, onChange, disabled, className }: UnitSelectP
   // Restaurar última unidade selecionada se existir e for válida
   useEffect(() => {
     if (!value && lastSelectedUnit && fetchState.units.some(u => u.id === lastSelectedUnit)) {
+      console.log('[UnitSelect] Restaurando última unidade selecionada:', lastSelectedUnit);
       onChange(lastSelectedUnit);
     }
   }, [fetchState.units, value, lastSelectedUnit, onChange]);
