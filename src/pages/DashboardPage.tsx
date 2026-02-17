@@ -481,7 +481,7 @@ export function DashboardPage() {
                       <div key={idx} className="bg-indigo-50 p-2 rounded text-sm">
                         <p className="font-medium text-indigo-700">{section.title}</p>
                         <p className="text-gray-500 text-xs mt-1">
-                          Campos: {section.fields.join(', ')}
+                          Campos: {section.fields?.join(', ') || 'N/A'}
                         </p>
                       </div>
                     ))}
