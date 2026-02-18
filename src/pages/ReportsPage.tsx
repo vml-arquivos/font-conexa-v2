@@ -1,17 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getDiaryByClassroom, getDiaryByPeriod, getDiaryUnplanned } from '../api/reports';
+import { getAccessibleClassrooms } from '../api/lookup';
 import { getErrorMessage } from '../utils/errorMessage';
+import type { AccessibleClassroom } from '../types/lookup';
 
 const LABELS_PT: Record<string, string> = {
-  id: 'ID', classroomId: 'ID da Turma', startDate: 'Data de Início', endDate: 'Data de Término',
+  id: 'ID', classroomId: 'Turma', startDate: 'Data de Início', endDate: 'Data de Término',
   totalEvents: 'Total de Eventos', events: 'Eventos', eventDate: 'Data do Evento',
   eventType: 'Tipo de Evento', description: 'Descrição', notes: 'Observações',
   isPlanned: 'Planejado', createdAt: 'Criado em', updatedAt: 'Atualizado em',
-  child: 'Criança', firstName: 'Nome', lastName: 'Sobrenome', childId: 'ID da Criança',
-  planning: 'Planejamento', planningId: 'ID do Planejamento', status: 'Status',
+  child: 'Criança', firstName: 'Nome', lastName: 'Sobrenome', childId: 'Criança',
+  planning: 'Planejamento', planningId: 'Planejamento', status: 'Status',
   curriculumEntry: 'Entrada Curricular', campoDeExperiencia: 'Campo de Experiência',
   objetivoBNCC: 'Objetivo BNCC', date: 'Data', period: 'Período', from: 'De', to: 'Até',
-  unitId: 'ID da Unidade', totalUnplanned: 'Total Não Planejado',
+  unitId: 'Unidade', totalUnplanned: 'Total Não Planejado',
   unplannedEvents: 'Eventos Não Planejados', classroom: 'Turma',
   classroomName: 'Nome da Turma', name: 'Nome', code: 'Código', unit: 'Unidade',
 };
@@ -44,11 +46,21 @@ export function ReportsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [turmas, setTurmas] = useState<AccessibleClassroom[]>([]);
+  const [turmasCarregando, setTurmasCarregando] = useState(false);
   const [classroomId, setClassroomId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [periodoInicio, setPeriodoInicio] = useState('');
   const [periodoFim, setPeriodoFim] = useState('');
+
+  useEffect(() => {
+    setTurmasCarregando(true);
+    getAccessibleClassrooms()
+      .then(data => setTurmas(data))
+      .catch(() => setTurmas([]))
+      .finally(() => setTurmasCarregando(false));
+  }, []);
 
   const carregarRelatorio = async () => {
     setError(null); setLoading(true); setReportData(null);
@@ -62,10 +74,7 @@ export function ReportsPage() {
         const resp = await getDiaryByClassroom(classroomId, startDate, endDate);
         data = resp as unknown as ReportData;
       } else if (reportType === 'by-period') {
-        if (!periodoInicio || !periodoFim) {
-          setError('Preencha a Data de Início e a Data de Término antes de gerar o relatório.');
-          setLoading(false); return;
-        }
+        // Período é opcional — sem validação obrigatória
         const resp = await getDiaryByPeriod(periodoInicio, periodoFim);
         data = resp as unknown as ReportData;
       } else if (reportType === 'unplanned') {
@@ -203,9 +212,18 @@ export function ReportsPage() {
           <h2 className="text-lg font-semibold mb-4 text-gray-700">Filtros — Relatório por Turma</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">ID da Turma <span className="text-red-500">*</span></label>
-              <input type="text" value={classroomId} onChange={e => setClassroomId(e.target.value)} placeholder="Ex: seed-classroom-001"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              <label className="block text-sm font-medium text-gray-600 mb-1">Turma <span className="text-red-500">*</span></label>
+              <select value={classroomId} onChange={e => setClassroomId(e.target.value)}
+                disabled={turmasCarregando}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white">
+                <option value="">{turmasCarregando ? 'Carregando turmas...' : 'Selecione a turma'}</option>
+                {turmas.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+              {classroomId && turmas.find(t => t.id === classroomId) && (
+                <p className="text-xs text-blue-600 mt-1">Selecionada: <strong>{turmas.find(t => t.id === classroomId)?.name}</strong></p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Data de Início <span className="text-red-500">*</span></label>
@@ -230,12 +248,12 @@ export function ReportsPage() {
           <h2 className="text-lg font-semibold mb-4 text-gray-700">Filtros — Relatório por Período</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Data de Início <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Data de Início <span className="text-gray-400 text-xs">(opcional)</span></label>
               <input type="date" value={periodoInicio} onChange={e => setPeriodoInicio(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Data de Término <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Data de Término <span className="text-gray-400 text-xs">(opcional)</span></label>
               <input type="date" value={periodoFim} onChange={e => setPeriodoFim(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400" />
             </div>
