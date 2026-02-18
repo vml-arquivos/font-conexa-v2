@@ -4,13 +4,13 @@ export interface ReportData {
   [key: string]: unknown;
 }
 
-export async function getDiaryByClassroom(): Promise<ReportData[]> {
-  const response = await http.get('/reports/diary/by-classroom');
+export async function getDiaryByClassroom(classroomId: string, startDate: string, endDate: string): Promise<ReportData[]> {
+  const response = await http.get('/reports/diary/by-classroom', { params: { classroomId, startDate, endDate } });
   return response.data;
 }
 
-export async function getDiaryByPeriod(): Promise<ReportData[]> {
-  const response = await http.get('/reports/diary/by-period');
+export async function getDiaryByPeriod(startDate: string, endDate: string): Promise<ReportData[]> {
+  const response = await http.get('/reports/diary/by-period', { params: { startDate, endDate } });
   return response.data;
 }
 
