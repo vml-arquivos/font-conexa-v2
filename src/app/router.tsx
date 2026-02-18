@@ -7,6 +7,7 @@ import { MatricesPage } from '../pages/MatricesPage';
 import { ReportsPage } from '../pages/ReportsPage';
 import TeacherDashboardPage from '../pages/TeacherDashboardPage';
 import { MaterialRequestPage } from '../pages/MaterialRequestPage';
+import { PedidosCompraPage } from '../pages/PedidosCompraPage';
 import { DashboardCentralPage } from '../pages/DashboardCentralPage';
 import { DashboardUnidadePage } from '../pages/DashboardUnidadePage';
 import { AppLayout } from '../components/layout/AppLayout';
@@ -70,7 +71,20 @@ export const router = createBrowserRouter([
       // Página dedicada de Requisições de Materiais
       {
         path: 'material-requests',
-        element: <MaterialRequestPage />,
+        element: (
+          <RoleProtectedRoute allowedRoles={['PROFESSOR', 'UNIDADE', 'MANTENEDORA', 'DEVELOPER']}>
+            <MaterialRequestPage />
+          </RoleProtectedRoute>
+        ),
+      },
+      // Pedidos de Compra — Unidade consolida, Mantenedora gerencia
+      {
+        path: 'pedidos-compra',
+        element: (
+          <RoleProtectedRoute allowedRoles={['UNIDADE', 'STAFF_CENTRAL', 'MANTENEDORA', 'DEVELOPER']}>
+            <PedidosCompraPage />
+          </RoleProtectedRoute>
+        ),
       },
       // Dashboard Central (Bruna/Carla) — somente leitura
       {
