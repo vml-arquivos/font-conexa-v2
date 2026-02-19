@@ -6,11 +6,17 @@ import { MessageSquare, Send } from 'lucide-react';
 import { createDiaryEvent } from '../../api/diary';
 import { getPedagogicalToday } from '../../utils/pedagogicalDate';
 
+import { getErrorMessage } from '../../utils/errorMessage';
+interface StudentRef {
+  id: string;
+  name?: string;
+}
+
 interface QuickObservationInputProps {
   planningId: string;
   curriculumEntryId: string;
   classroomId: string;
-  students: any[];
+  students: StudentRef[];
 }
 
 export function QuickObservationInput({ planningId, curriculumEntryId, classroomId, students }: QuickObservationInputProps) {
@@ -40,11 +46,11 @@ export function QuickObservationInput({ planningId, curriculumEntryId, classroom
         description: "A observação foi registrada no diário do aluno.",
       });
       setObservation('');
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Erro ao Salvar",
-        description: error.message || "Falha ao registrar observação.",
+        description: getErrorMessage(error, "Falha ao registrar observação."),
       });
     } finally {
       setLoading(false);

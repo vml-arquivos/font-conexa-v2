@@ -6,11 +6,17 @@ import { Utensils, Moon, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { createDiaryEvent } from '../../api/diary';
 import { getPedagogicalToday } from '../../utils/pedagogicalDate';
 
+import { getErrorMessage } from '../../utils/errorMessage';
+interface StudentRef {
+  id: string;
+  name?: string;
+}
+
 interface OneTouchDiaryPanelProps {
   planningId: string;
   curriculumEntryId: string;
   classroomId: string;
-  students: any[]; // Idealmente viria de uma API de alunos
+  students: StudentRef[]; // Idealmente viria de uma API de alunos
 }
 
 export function OneTouchDiaryPanel({ planningId, curriculumEntryId, classroomId, students }: OneTouchDiaryPanelProps) {
@@ -44,11 +50,11 @@ export function OneTouchDiaryPanel({ planningId, curriculumEntryId, classroomId,
         title: "Registro Concluído",
         description: `${title} registrado para ${students.length} alunos.`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Erro no Registro",
-        description: error.message || "Falha ao registrar evento em lote.",
+        description: getErrorMessage(error, "Falha ao registrar evento em lote."),
       });
     } finally {
       setLoading(null);
