@@ -15,6 +15,7 @@ export function ClassroomFeedMini({ classroomId }: ClassroomFeedMiniProps) {
 
   useEffect(() => {
     loadEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classroomId]);
 
   const loadEvents = async () => {

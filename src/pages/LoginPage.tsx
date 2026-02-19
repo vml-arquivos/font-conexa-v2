@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../app/AuthProvider';
+import { normalizeRoles } from '../app/RoleProtectedRoute';
+import { getRedirectPathByRoles } from '../hooks/useRedirectByRole';
+import { getErrorMessage } from '../utils/errorMessage';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -16,10 +19,12 @@ export function LoginPage() {
     setLoading(true);
 
     try {
-      await login(email, password);
-      navigate('/app/dashboard');
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Erro ao fazer login');
+      const userData = await login(email, password);
+      const roles = normalizeRoles(userData);
+      const redirectPath = getRedirectPathByRoles(roles);
+      navigate(redirectPath);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro ao fazer login'));
     } finally {
       setLoading(false);
     }

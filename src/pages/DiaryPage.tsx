@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getDiaryEvents, createDiaryEvent } from '../api/diary';
-import type { DiaryEvent } from '../api/diary';
+import type { DiaryEvent, CreateDiaryEventDto } from '../api/diary';
+import { getErrorMessage } from '../utils/errorMessage';
 
 export function DiaryPage() {
   const [events, setEvents] = useState<DiaryEvent[]>([]);
@@ -39,13 +40,13 @@ export function DiaryPage() {
     setFormLoading(true);
 
     try {
-      let payload: any;
+      let payload: unknown;
       
       if (advancedMode) {
         // Modo avançado: enviar JSON exatamente como o usuário escreveu
         try {
           payload = JSON.parse(jsonPayload);
-        } catch (parseError) {
+        } catch {
           setFormError('JSON inválido. Verifique a sintaxe.');
           setFormLoading(false);
           return;
@@ -55,7 +56,7 @@ export function DiaryPage() {
         payload = formData;
       }
 
-      await createDiaryEvent(payload);
+      await createDiaryEvent(payload as unknown as CreateDiaryEventDto);
       
       // Sucesso: resetar formulário
       setFormData({ title: '', date: '', description: '' });
@@ -63,10 +64,11 @@ export function DiaryPage() {
       setAdvancedMode(false);
       setShowForm(false);
       loadEvents();
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Exibir erro 400 na tela com clareza
-      const status = err.response?.status;
-      const errorData = err.response?.data;
+      const e = err as { response?: { status?: number; data?: { message?: unknown } } };
+      const status = e.response?.status;
+      const errorData = e.response?.data;
       
       if (status === 400) {
         // Erro de validação do backend
@@ -88,7 +90,7 @@ export function DiaryPage() {
         setFormErrorDetails(errorDetails);
       } else {
         // Outro erro
-        const errorMessage = errorData?.message || err.message || 'Erro ao criar evento';
+        const errorMessage = typeof errorData?.message === 'string' ? errorData.message : getErrorMessage(err, 'Erro ao criar evento');
         setFormError(`Erro ${status || ''}: ${errorMessage}`);
       }
     } finally {
@@ -244,9 +246,6 @@ export function DiaryPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Título
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -261,13 +260,10 @@ export function DiaryPage() {
               {events.map((event) => (
                 <tr key={event.id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {event.id}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {event.title}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {event.date}
+                    {event.eventDate}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {event.description || '-'}
