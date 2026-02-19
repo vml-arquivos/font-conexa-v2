@@ -77,7 +77,7 @@ export function DashboardCentralPage() {
 
   // Carregar unidades acessíveis
   useEffect(() => {
-    http.get('/lookup/unidades/acessiveis')
+    http.get('/lookup/units/accessible')
       .then(r => setUnidades(r.data ?? []))
       .catch(() => setUnidades([]));
   }, []);

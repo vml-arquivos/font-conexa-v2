@@ -13,6 +13,7 @@ import {
   ShoppingBag,
   FileText,
   Home,
+  MessageCircle,
 } from 'lucide-react';
 import { useAuth } from '../../app/AuthProvider';
 import { normalizeRoles } from '../../app/RoleProtectedRoute';
@@ -31,6 +32,7 @@ const PROFESSOR_PRINCIPAL: MenuItem[] = [
 const PROFESSOR_FERRAMENTAS: MenuItem[] = [
   { path: '/app/plannings', label: 'Planejamentos', icon: <BookOpen className="h-4 w-4" /> },
   { path: '/app/diary', label: 'Diário de Bordo', icon: <ClipboardList className="h-4 w-4" /> },
+  { path: '/app/atendimentos-pais', label: 'Atendimentos Pais', icon: <MessageCircle className="h-4 w-4" /> },
   { path: '/app/reports', label: 'Relatórios', icon: <BarChart2 className="h-4 w-4" /> },
 ];
 
@@ -44,6 +46,7 @@ const UNIDADE_PEDAGOGICO: MenuItem[] = [
   { path: '/app/plannings', label: 'Planejamentos', icon: <BookOpen className="h-4 w-4" /> },
   { path: '/app/diary', label: 'Diário de Bordo', icon: <ClipboardList className="h-4 w-4" /> },
   { path: '/app/matrices', label: 'Matriz Curricular', icon: <Grid className="h-4 w-4" /> },
+  { path: '/app/atendimentos-pais', label: 'Atendimentos Pais', icon: <MessageCircle className="h-4 w-4" /> },
   { path: '/app/reports', label: 'Relatórios', icon: <BarChart2 className="h-4 w-4" /> },
 ];
 

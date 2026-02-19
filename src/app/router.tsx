@@ -10,6 +10,7 @@ import { MaterialRequestPage } from '../pages/MaterialRequestPage';
 import { PedidosCompraPage } from '../pages/PedidosCompraPage';
 import { DashboardCentralPage } from '../pages/DashboardCentralPage';
 import { DashboardUnidadePage } from '../pages/DashboardUnidadePage';
+import { AtendimentoPaisPage } from '../pages/AtendimentoPaisPage';
 import { AppLayout } from '../components/layout/AppLayout';
 import { ProtectedRoute } from './ProtectedRoute';
 import { RoleProtectedRoute } from './RoleProtectedRoute';
@@ -101,6 +102,15 @@ export const router = createBrowserRouter([
         element: (
           <RoleProtectedRoute allowedRoles={['UNIDADE', 'MANTENEDORA', 'DEVELOPER']}>
             <DashboardUnidadePage />
+          </RoleProtectedRoute>
+        ),
+      },
+      // Atendimentos aos Pais/Responsáveis
+      {
+        path: 'atendimentos-pais',
+        element: (
+          <RoleProtectedRoute allowedRoles={['PROFESSOR', 'UNIDADE', 'STAFF_CENTRAL', 'MANTENEDORA', 'DEVELOPER']}>
+            <AtendimentoPaisPage />
           </RoleProtectedRoute>
         ),
       },
